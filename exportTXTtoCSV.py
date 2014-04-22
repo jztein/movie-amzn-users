@@ -18,7 +18,7 @@ argParser.add_argument('--csv', '-c', nargs=1, required=True, help='csv file nam
 args = argParser.parse_args()
 
 def setupCSVfile(csvFile):
-    csvFile.write('pid,uid,helpN,helpD,score\n')
+    csvFile.write('pid,uid,helpN,helpD,score,time\n')
 
 # AN = alphanumeric e.g. B0001Z3TLQ
 def transANtoASCII(id):
@@ -43,8 +43,8 @@ def parseSection(section):
     summary = section[8][LEN_SUMMARY:-1]
     text = section[9][LEN_TEXT:-1]
 
-    csvFile.write('%s,%s,%d,%d,%f\n' % (productID,userID,helpNumerator
-                                        ,helpDenominator,score))
+    csvFile.write('%s,%s,%d,%d,%f,%d\n' % (productID,userID,helpNumerator
+                                        ,helpDenominator,score,time))
 
     return {'pid':productID, 'title':title, 'price':price, 'uid':userID,\
             'profile':profile, 'helpN':helpNumerator, \
