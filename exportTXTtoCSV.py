@@ -28,10 +28,10 @@ def parseSection(section):
     productID = section[0][LEN_PID:-1]
     productID = transANtoASCII(productID)
 
-    title = section[1][LEN_TITLE: -1]
-    price = section[2][LEN_PRICE:-1]
+    #title = section[1][LEN_TITLE: -1]
+    #price = section[2][LEN_PRICE:-1]
     userID = transANtoASCII(section[3][LEN_UID:-1])
-    profile = section[4][LEN_PROFILE:-1]
+    #profile = section[4][LEN_PROFILE:-1]
 
     helpfulness = section[5][LEN_HELP:-1].split('/')
     helpNumerator = int(helpfulness[0])
@@ -40,16 +40,18 @@ def parseSection(section):
     score = float(section[6][LEN_SCORE:-1])
 
     time = int(section[7][LEN_TIME:-1])
-    summary = section[8][LEN_SUMMARY:-1]
-    text = section[9][LEN_TEXT:-1]
+    #summary = section[8][LEN_SUMMARY:-1]
+    #text = section[9][LEN_TEXT:-1]
 
     csvFile.write('%s,%s,%d,%d,%f,%d\n' % (productID,userID,helpNumerator
                                         ,helpDenominator,score,time))
 
+    '''
     return {'pid':productID, 'title':title, 'price':price, 'uid':userID,\
             'profile':profile, 'helpN':helpNumerator, \
             'helpD':helpDenominator, 'score':score, 'time':time, \
             'sum':summary, 'text':text}
+    '''
 
 # 10+1 lines
 
