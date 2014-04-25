@@ -1,4 +1,5 @@
 import argparse
+from zlib import adler32
 
 LEN_PID = len('product/productId: ')
 LEN_TITLE = len('product/title: ')
@@ -26,11 +27,11 @@ def transANtoASCII(id):
 
 def parseSection(section):
     productID = section[0][LEN_PID:-1]
-    productID = transANtoASCII(productID)
+    productID = adler32(productID)
 
     #title = section[1][LEN_TITLE: -1]
     #price = section[2][LEN_PRICE:-1]
-    userID = transANtoASCII(section[3][LEN_UID:-1])
+    userID = adler32(section[3][LEN_UID:-1])
     #profile = section[4][LEN_PROFILE:-1]
 
     helpfulness = section[5][LEN_HELP:-1].split('/')
