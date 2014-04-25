@@ -1,6 +1,10 @@
 from __future__ import division
 import argparse
 import numpy as np
+from scipy import misc
+import pylab
+import matplotlib.pyplot as plt
+import matplotlib.colors as color
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c')
@@ -18,6 +22,9 @@ def groupByMovies():
         curLine = allLines[i]
         pid = curLine[0:9]
         uid = curLine[11:19]
+        if uid == '05914897':
+            # unknown user
+            continue
         if pid not in movToUsers:
             movToUsers[pid] = [uid]
         else:
@@ -34,6 +41,9 @@ def groupByUsers():
         curLine = allLines[i]
         pid = curLine[0:9]
         uid = curLine[11:19]
+        if uid == '05914897':
+            # unknown user
+            continue
         if uid not in userToMovies:
             userToMovies[uid] = [pid]
         else:
@@ -53,9 +63,13 @@ def getPairDistances(movToUsers, userToMovs):
             userAvg += len(mappedUids)
         userAvg /= len(userMovs)
         allAvgs.append(userAvg)
-        print "#######", userAvg
     sumAvgs = sum(allAvgs)
     avgAvg = sumAvgs / len(allAvgs)
+
+
+    plt.hist(allAvgs, bins=20)
+    plt.savefig('test_allAvgs_1000.png')
+
     print "Average avg:", avgAvg
 
 if __name__ == '__main__':
