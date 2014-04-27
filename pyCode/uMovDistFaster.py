@@ -36,6 +36,7 @@ def shortenFile():
     smallFile.close()
 
 def breakdownLines(allLines):
+    np.set_printoptions(precision=28, formatter='longfloat')
     pidArr = np.zeros(numLines-1)
     uidArr = np.zeros(numLines-1)
 
@@ -122,21 +123,15 @@ if __name__ == '__main__':
     t = time() - startTime
     print "time to load uid and pid arrs:", t
 
-    print "=============================="
-    for i in xrange(100):
-        print uids[i]
-    print "=============================="
-    print "############################"
-    print "=============================="
-    for i in xrange(100):
-        print pids[i]
+    for i in xrange(10):
+        print uids[i], " : ", pids[i]
 
+    '''
+    distributionOfMoviesUsers(pids, uids)
+    t = time() - startTime
+    print ": time dist of movie users:", t
     exit()
-
-    #distributionOfMoviesUsers(pids, uids)
-    #t = time() - startTime
-    #print ": time dist of movie users:", t
-    #exit()
+    '''
 
     mtu = groupByMovies(pids, uids)
     t = time() - startTime
