@@ -59,6 +59,23 @@ def getSavedPidsUids():
 
     return pids, uids
 
+def groupAbyBs(pids, uids):
+    print "grouping..."
+    movToUsers = {}
+    for i in xrange(numLines):
+        pid = pids[i]
+        uid = uids[i]
+        if pid not in movToUsers:
+            movToUsers[pid] = [uid]
+        else:
+            if uid in movToUsers[pid]:
+                #print "Duplicate pid-uid in csv?" 
+                continue
+            movToUsers[pid].append(uid)
+
+    return movToUsers
+
+
 def groupByMovies(pids, uids):
     print "grouping movies..."
     movToUsers = {}
@@ -122,7 +139,8 @@ def distributionOfMoviesUsers(pids, uids):
 if __name__ == '__main__':
     startTime = time()
 
-    #pids, uids = breakdownLines(allLinesCsv)
+    pids, uids = breakdownLines(allLinesCsv)
+    exit()
 
     pids, uids = getSavedPidsUids()
     print len(pids), ": time:", time() - startTime
