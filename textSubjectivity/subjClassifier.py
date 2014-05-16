@@ -4,6 +4,9 @@ import cPickle
 import pprint
 from textblob.classifiers import NaiveBayesClassifier
 from textblob_aptagger import PerceptronTagger
+from textblob import TextBlob
+
+USEFUL_POS_TAGS = ['JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NNP', 'PRP', 'RB', 'PRP$', 'RB', 'RBR', 'RBS','VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--training', action='store_true')
@@ -109,37 +112,83 @@ def naiveBayesClassifier(obj, sub, corpusSize=5000):
     numWords = [0, 0] # num obj words, num sub words (non-unique)
     tokenSets = [{}, {}] # [obj tokens, sub tokens]
 
-    for train in trainingSets:
+    '''
+    # objective set
+    train = trainingSets[0]
+    words = train.split(' ')
+    tokens = tokenSets[i]
+    for w in words:
+        if w.isalpha():
+            numWords[i] += 1
+            if w in tokens:
+                tokens[w] += 1
+            else:
+                tokens[w] = 0
+                totalUniques += 1
+    i += 1
 
-        
+    # blegh
+    train = trainingSets[1]
+    words = train.split(' ')
+    tokens = tokenSets[i]
+    for w in words:
+        if w.isalpha():
+            numWords[i] += 1
+            if w in tokens:
+                tokens[w] += 1
+            else:
+                tokens[w] = 0
+                totalUniques += 1
 
-        words = train.split(' ')
-        tokens = tokenSets[i]
-        for w in words:
-            if w.isalpha():
-                numWords[i] += 1
-                if w in tokens:
-                    tokens[w] += 1
+    '''            
+
+    tagger = PerceptronTagger()
+
+    # objective set
+    train = trainingSets[0]
+    tokens = tokenSets[0]
+    # tag out useful words: verbs, nouns, adjectives
+    for word, tag in TextBlob(train, pos_tagger=tagger).tags:
+        if tag in USEFUL_POS_TAGS:
+            if word.isalpha():
+                numWords[0] += 1
+                if word in tokens:
+                    tokens[word] += 1
                 else:
-                    tokens[w] = 0
+                    tokens[word] = 0
                     totalUniques += 1
-        i += 1
+    # subjective set
+    train = trainingSets[1]
+    tokens = tokenSets[1]
+    # tag out useful words: verbs, nouns, adjectives
+    for word, tag in TextBlob(train, pos_tagger=tagger).tags:
+        if tag in USEFUL_POS_TAGS:
+            if word.isalpha():
+                numWords[1] += 1
+                if word in tokens:
+                    tokens[word] += 1
+                else:
+                    tokens[word] = 0
+                    totalUniques += 1
+
+    # total words
+    totalWords = numWords[0] + numWords[1]
+    Pobj = numWords[0] / totalWords
+    Psubj = numWords[1] / totalWords
+    
 
     # calculate smoothed probabilities
     objProbs, subProbs = {}, {}
     # obj tokens
     tokens = tokenSets[0]
     for w in tokens:
-        objProbs[w] = (tokens[w] + 1) / (numWords[0] + totalUniques)
+        objProbs[w] = (tokens[w] + 1) / (numWords[0] + 5000)
     # sub tokens
     tokens = tokenSets[1]
     for w in tokens:
-        subProbs[w] = (tokens[w] + 1) / (numWords[1] + totalUniques)
+        subProbs[w] = (tokens[w] + 1) / (numWords[1] + 5000)
 
     print "Done training."
-    print objProbs
-    print "##############################"
-    print subProbs
     f = open('objProbs.pkl', 'wb')
     cPickle.dump(objProbs, f)
     f.close()
@@ -147,8 +196,11 @@ def naiveBayesClassifier(obj, sub, corpusSize=5000):
     cPickle.dump(subProbs, f)
     f.close()
 
+    return Pobj, Psubj
+
+
 # want to classify 'text'
-def classify(obj, sub, text):
+def classify(obj, sub, Pobj, Psubj):
     # saved classifiers
     f = open(obj, 'rb')
     objProbs = cPickle.load(f)
@@ -157,24 +209,33 @@ def classify(obj, sub, text):
     subProbs = cPickle.load(f)
     f.close()
 
-    f = open(text, 'r')
+    f = open(args.s, 'r')
     lines = f.readlines()
     f.close()
+    f = open(args.o, 'r')
+    lines2 = f.readlines()
+    f.close()
 
+    print "subjective test set results"
+    nowClassify(lines, objProbs, subProbs, Pobj, Psubj)
+    print "objective test set results"
+    nowClassify(lines2, objProbs, subProbs, Pobj, Psubj)
+
+def nowClassify(lines, objProbs, subProbs, Pobj, Psubj):
     # true == subjective
     classed = []
     subjC, objC = 0, 0
     for line in lines:
         # tokenize line
         sentence = line.replace(',', '').split(' ')
-        objectivity, subjectivity = 0.0, 0.0
+        objectivity, subjectivity = Pobj, Psubj
         # sum probabilities of being objective
         # sum probabilities of being subjective
         for word in sentence:
             if word in objProbs:
-                objectivity += objProbs[word]
+                objectivity *= objProbs[word]
             if word in subProbs:
-                subjectivity += 1.01*subProbs[word]
+                subjectivity *= subProbs[word]
         # compare sums to classify
         classed.append(subjectivity > objectivity)
         if (subjectivity > objectivity):
@@ -189,9 +250,8 @@ if __name__ == '__main__':
     #depr? classifier = makeClassifier("objsub.csv")
     #depr? classifyUserData(classifier)
 
-    #naiveBayesClassifier('trainingObj.txt', 'trainingSub.txt')
-    #classify('objProbs.pkl', 'subProbs.pkl', 'quote.tok.gt9.5000')
-    classify('objProbs.pkl', 'subProbs.pkl', 'plot.tok.gt9.5000')
+    pObj, pSubj = naiveBayesClassifier('trainingObj.txt', 'trainingSub.txt')
+    classify('objProbs.pkl', 'subProbs.pkl', pObj, pSubj)
 
     print "We done now whad"
     exit(0)
