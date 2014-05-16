@@ -75,6 +75,7 @@ def naiveBayesClassifier(obj, sub, corpusSize=5000):
     totalWords = numWords[0] + numWords[1]
     Pobj = numWords[0] / totalWords
     Psubj = numWords[1] / totalWords
+
     f = open(args.po, 'wb')
     cPickle.dump([Pobj], f)
     f.close()
@@ -158,6 +159,7 @@ if __name__ == '__main__':
                                            'trainingSub.txt')
     else:
         pObj, pSubj = getPxbj(args.po, args.ps)
+
     classify('objProbs.pkl', 'subProbs.pkl', pObj, pSubj)
 
     print "We done now whad"
