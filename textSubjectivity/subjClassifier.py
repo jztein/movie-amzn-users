@@ -16,6 +16,8 @@ parser.add_argument('-s', help='subjective training set')
 parser.add_argument('-u', help='users data')
 parser.add_argument('-po', help='P objective')
 parser.add_argument('-ps', help='P subjective')
+parser.add_argument('-t', help='own training set. own labeled. 1 is subj')
+parser.add_argument('--updateClassifier', action='store_true')
 
 args = parser.parse_args()
 
@@ -106,7 +108,7 @@ def naiveBayesClassifier(obj, sub, corpusSize=5000):
 
 
 # want to classify 'text'
-def classify(obj, sub, Pobj, Psubj):
+def classify(obj, sub, Pobj, Psubj, granular=True):
     # saved classifiers
     f = open(obj, 'rb')
     objProbs = cPickle.load(f)
@@ -114,26 +116,47 @@ def classify(obj, sub, Pobj, Psubj):
     f = open(sub, 'rb')
     subProbs = cPickle.load(f)
     f.close()
-
+        
     f = open(args.s, 'r')
     lines = f.readlines()
     f.close()
-    f = open(args.o, 'r')
-    lines2 = f.readlines()
-    f.close()
+    #f = open(args.o, 'r')
+    #lines2 = f.readlines()
+    #f.close()
 
-    print "subjective test set results"
-    nowClassify(lines, objProbs, subProbs, Pobj, Psubj)
-    print "objective test set results"
-    nowClassify(lines2, objProbs, subProbs, Pobj, Psubj)
+    print "test set results"
+    nowClassify(lines, objProbs, subProbs, Pobj, Psubj, granular)
+    #print "objective test set results"
+    #nowClassify(lines2, objProbs, subProbs, Pobj, Psubj)
 
-def nowClassify(lines, objProbs, subProbs, Pobj, Psubj):
+# granular makes larger training files
+def nowClassify(lines, objProbs, subProbs, Pobj, Psubj, granular):
     # true == subjective
     classed = []
     subjC, objC = 0, 0
+
+    if granular:
+        print "heylus"
+        granularLines = []
+        for line in lines:
+            # split review into sentences
+            a = (' ').join(line.replace(',', '').split()).replace('?','\n').replace('!','\n').replace('.','\n')
+            a = a.split('\n')
+            for x in a:
+                if x:
+                    granularLines.append(x)
+        lines = granularLines
+
+        sFile = open('update5000_subj.txt', 'w')
+        oFile = open('update5000_obj.txt', 'w')
+
+    rFile = open('subjResults_ALL.txt', 'w')
+
     for line in lines:
         # tokenize line
-        sentence = line.replace(',', '').split(' ')
+        if not granular:
+            line = line.replace(',', '')
+        sentence = line.split(' ')
         objectivity, subjectivity = Pobj, Psubj
         # sum probabilities of being objective
         # sum probabilities of being subjective
@@ -144,23 +167,89 @@ def nowClassify(lines, objProbs, subProbs, Pobj, Psubj):
                 subjectivity *= subProbs[word]
         # compare sums to classify
         classed.append(subjectivity > objectivity)
-        if (subjectivity > objectivity):
-            subjC += 1
-        else:
-            objC += 1
 
-    print subjC, objC
+        # TODO check <=
+        if (subjectivity <= objectivity):
+            if granular:
+                sFile.write('1%s\n' % (' ').join(sentence))
+            subjC += 1
+            rFile.write('1')
+        else:
+            if granular:
+                oFile.write('0%s\n' % (' ').join(sentence))
+            objC += 1
+            rFile.write('0')
+
+    rFile.write('\n')
+    rFile.close()
+
+    if granular:
+        sFile.close()
+        oFile.close()
+
+    print "Subj lines: %d, Obj lines %d" % (subjC, objC)
+
+def makeSubjectivityTrainers(sub, obj, block=True, ownSet=True, set=''):
+
+    print "Making training set..."
+    rawObjSet, rawSubSet = [], []
+
+    if ownSet:
+        f = open(set, 'r')
+        trainingSet = f.readlines()
+        for t in trainingSet:
+            if t[0] == '1':
+                rawSubSet.append(t[1:])
+            else:
+                rawObjSet.append(t[1:])
+    else:
+        f = open(obj, 'r')
+        rawObjSet = f.readlines()
+        f.close()
+        f = open(sub, 'r')
+        rawSubSet = f.readlines()
+        f.close()
+
+    if block:
+        print "Num Objs: %d, Num Subjs: %d" % (len(rawObjSet), len(rawSubSet))
+        testObjFile = open("trainingObj.txt", 'wb')
+        testSubFile = open("trainingSub.txt", 'wb')
+        for obj in rawObjSet:
+            sent = unicode(obj[:-1].replace(',', ''), errors='ignore')
+            testObjFile.write('%s ' % sent)
+        for sub in rawSubSet:
+            sent = unicode(sub[:-1].replace(',', ''), errors='ignore')
+            testSubFile.write('%s ' % sent)
+        testObjFile.close()
+        testSubFile.close()
+    else:
+        rawSets = [rawObjSet, rawSubSet]
+        type = ['obj', 'sub']
+        testSetFile = open("objsub.csv", "wb")
+        i = 0
+        for set in rawSets:
+            for sample in set:
+                # since it is a csv file, cannot have commas in sentence
+                sent = unicode(sample[:-1].replace(',', ''), errors='ignore')
+                testSetFile.write("%s,%s\n" % (sent, type[i]))
+            i += 1
+        testSetFile.close()
 
 if __name__ == '__main__':
     if args.makeTrainers:
-        makeSubjectivityTrainers(args.s, args.o)
+        makeSubjectivityTrainers(args.s, args.o, ownSet=True, set=args.t)
     if args.makeClassifier:
         pObj, pSubj = naiveBayesClassifier('trainingObj.txt', 
                                            'trainingSub.txt')
     else:
         pObj, pSubj = getPxbj(args.po, args.ps)
 
-    classify('objProbs.pkl', 'subProbs.pkl', pObj, pSubj)
+    print
+
+    if args.updateClassifier:
+        classify('objProbs.pkl', 'subProbs.pkl', pObj, pSubj, granular=True)
+    else:
+        classify('objProbs.pkl', 'subProbs.pkl', pObj, pSubj, granular=False)
 
     print "We done now whad"
     exit(0)
