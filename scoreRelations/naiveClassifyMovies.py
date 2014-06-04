@@ -1,4 +1,6 @@
 '''
+USAGE: python naiveClassifyMovies.py --mts /Users/kristen/Documents/1UCLA/CS199/pyCode/mts.pkl --naive
+
 EIGHT classes of movies:
 (1a) appealing, (1b) unappealing;
 - means, skewness
