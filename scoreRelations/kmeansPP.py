@@ -31,6 +31,9 @@ time taken: 58.4788708687
 $ ls -l | grep KmeansPP_
 -rw-r--r--  1 kristen  staff   266763 Jun  4 12:17 featKmeansPP_clusters.pkl
 
+# time taken when k = 5
+time taken: 257.539864063
+time taken: 272.2333951
 '''
 from __future__ import division
 import argparse
@@ -52,6 +55,7 @@ parser.add_argument('-k', help='hashed pkl')
 parser.add_argument('-c', help='classified prelim pkl to finely hashed pkl')
 parser.add_argument('-f', help='features hash pkl')
 parser.add_argument('-s', help='save kmeans clusters in pkl')
+parser.add_argument('-i', help='already initialized centroids')
 parser.add_argument('--mtu')
 parser.add_argument('--utm')
 parser.add_argument('--mts')
@@ -223,22 +227,28 @@ def kmeansPP(k=5):
 
     sum2 = calcSum2(features, randFirstCentroid)
     nextCentroid = np.array([None, None, None])
+    finding = True
     # 1b. pick next centroid
-    for hash in features:
-        feat = features[hash]
-        bbq = calcProb(feat, randFirstCentroid, sum2)
-        if rand() < bbq:
-            nextCentroid = feat
-            print "picked 1b centroid"
-            break
-
-    centroids = [randFirstCentroid, nextCentroid]
-    sum2s = [calcSum2(features, c)  for c in centroids]
-    print "fat face"
-    # 1c. pick up to k centroids
-    while len(centroids) != k:
+    while finding:
         for hash in features:
             feat = features[hash]
+            bbq = calcProb(feat, randFirstCentroid, sum2)
+            if rand() < bbq:
+                nextCentroid = feat
+                print "picked 1b centroid"
+                finding = False
+                break
+
+    centroids = [randFirstCentroid, nextCentroid]
+    print "first two centroids:", centroids
+    sum2s = [calcSum2(features, c)  for c in centroids]
+    closestCentroidIndexes = np.zeros(len(features))
+    # 1c. pick up to k centroids
+    while len(centroids) != k:
+        j = 0
+        for hash in features:
+            feat = features[hash]
+            # TODO keep track of closest centroid
             minDist = dist(feat - centroids[0])
             minIdx = 0
             for i in xrange(1, len(centroids)):
@@ -251,13 +261,22 @@ def kmeansPP(k=5):
             c = centroids[minIdx]
             prob = calcProb(feat, c, sum2)
             if rand() < prob:
+                foundAlr = False
+                for c in centroids:
+                    if (feat == c).all():
+                        foundAlr = True
+                        break
+                if foundAlr:
+                    continue
+                print "found centroid:", feat
                 centroids.append(feat)
                 sum2s.append(calcSum2(features, feat))
+            j += 1
 
     print "all k=%d centroids" % k
     print centroids
 
-    f = open("centroids_SAVED2.pkl", 'wb')
+    f = open(args.i, 'wb')
     cPickle.dump(centroids, f)
     f.close()
 
@@ -265,7 +284,7 @@ def kmeansPP(k=5):
     kmeans(centroids, features)
 
 def kmeansPP_withSavedCentroids():
-    f = open("centroids_SAVED2.pkl", 'rb')
+    f = open(args.i, 'rb')
     centroids = cPickle.load(f)
     f.close()
 
@@ -317,7 +336,7 @@ def main():
     if args.finePrelim:
         classifyPrelimClusters()
     if args.kmeansPP:
-        kmeansPP()
+        kmeansPP(k=10)
     elif args.kmeansPPsaved:
         kmeansPP_withSavedCentroids()
     print "time taken:", time() - t
@@ -326,3 +345,24 @@ def main():
 if __name__ == '__main__':
     main()
     exit()
+
+'''
+K means++, k = 10
+
+$ python kmeansPP.py --utm /Users/kristen/Documents/1UCLA/CS199/pyCode/utm.pkl --mtu /Users/kristen/Documents/1UCLA/CS199/pyCode/mtu.pkl -g groupedC.pkl -k hashedC.pkl --mts /Users/kristen/Documents/1UCLA/CS199/pyCode/mts.pkl -c fineC.pkl -f featC.pkl --kmeansPP -s kmeansK10.pkl -i centroidsK10.pkl
+num classified prelim clusters: 34730
+num feats: 34730
+picked 1b centroid
+first two centroids: [array([2, 0, 2]), array([ 1.,  0.,  1.])]
+found centroid: [ 3.4375      1.20189969  2.875     ]
+found centroid: [ 5.  0.  1.]
+found centroid: [ 4.  1.  2.]
+found centroid: [ 4.  0.  1.]
+found centroid: [ 3.35833333  0.81255854  2.2       ]
+found centroid: [ 3.  2.  2.]
+found centroid: [ 3.  0.  1.]
+found centroid: [ 4.5  0.5  2. ]
+all k=10 centroids
+[array([2, 0, 2]), array([ 1.,  0.,  1.]), array([ 3.4375    ,  1.20189969,  2.875     ]), array([ 5.,  0.,  1.]), array([ 4.,  1.,  2.]), array([ 4.,  0.,  1.]), array([ 3.35833333,  0.81255854,  2.2       ]), array([ 3.,  2.,  2.]), array([ 3.,  0.,  1.]), array([ 4.5,  0.5,  2. ])]
+time taken: 1736.34240985
+'''
