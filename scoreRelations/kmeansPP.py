@@ -11,6 +11,13 @@ time taken: 395.305128813
 $ python kmeansPP.py -k hashedC.pkl --finePrelim --mts /Users/kristen/Documents/1UCLA/CS199/pyCode/mts.pkl -f fineC.pkl
 time taken: 6.35967183113
 
+# get centroids
+$ python kmeansPP.py -k hashedC.pkl --mts /Users/kristen/Documents/1UCLA/CS199/pyCode/mts.pkl -c fineC.pkl -f featC.pkl --kmeansPP -s featKmeansPP_clusters2.pkl
+picked 1b centroid
+all k=5 centroids
+[array([4, 0, 3]), array([ 5.,  0.,  1.]), array([ 2.,  0.,  1.]), array([ 5.,  0.,  1.]), array([ 1.75,  0.75,  2.  ])]
+time taken: 257.539864063
+
 # kmeans++
 $ python kmeansPP.py --mts /Users/kristen/Documents/1UCLA/CS199/pyCode/mts.pkl -c fineC.pkl -f featC.pkl --kmeansPP --getFeats
 $ python kmeansPP.py --mts /Users/kristen/Documents/1UCLA/CS199/pyCode/mts.pkl -c fineC.pkl -f featC.pkl --kmeansPP
@@ -172,6 +179,11 @@ def calcProb(feat, centroid, sum2):
     Dx = dist(feat - centroid)**2
     return Dx / sum2
 
+def calcSum2(features, centroid):
+    vals = features.values() - centroid
+    Dxs = [(dist(v))**2 for v in vals]
+    return sum(Dxs)
+
 # 2007 k-means++: The Advantages of Careful Seeding, Arthur & Vassilvitskii
 # http://ilpubs.stanford.edu:8090/778/1/2006-13.pdf
 def kmeansPP(k=5):
@@ -209,7 +221,7 @@ def kmeansPP(k=5):
                                   rr(min1, max1), 
                                   rr(min2, max2)])
 
-    sum2 = dist(sum((features.values() - randFirstCentroid)**2))
+    sum2 = calcSum2(features, randFirstCentroid)
     nextCentroid = np.array([None, None, None])
     # 1b. pick next centroid
     for hash in features:
@@ -221,9 +233,10 @@ def kmeansPP(k=5):
             break
 
     centroids = [randFirstCentroid, nextCentroid]
-    sum2s = [dist(sum((features.values()-c)**2)) for c in centroids]
+    sum2s = [calcSum2(features, c)  for c in centroids]
+    print "fat face"
     # 1c. pick up to k centroids
-    while len(centroids) < k:
+    while len(centroids) != k:
         for hash in features:
             feat = features[hash]
             minDist = dist(feat - centroids[0])
@@ -239,12 +252,12 @@ def kmeansPP(k=5):
             prob = calcProb(feat, c, sum2)
             if rand() < prob:
                 centroids.append(feat)
-                sum2s.append(dist(sum((features.values()-feat)**2)))
+                sum2s.append(calcSum2(features, feat))
 
     print "all k=%d centroids" % k
     print centroids
 
-    f = open("centroids_SAVED.pkl", 'wb')
+    f = open("centroids_SAVED2.pkl", 'wb')
     cPickle.dump(centroids, f)
     f.close()
 
@@ -252,7 +265,7 @@ def kmeansPP(k=5):
     kmeans(centroids, features)
 
 def kmeansPP_withSavedCentroids():
-    f = open("centroids_SAVED.pkl", 'rb')
+    f = open("centroids_SAVED2.pkl", 'rb')
     centroids = cPickle.load(f)
     f.close()
 
