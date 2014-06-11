@@ -12,6 +12,7 @@ TIME: 11533.430819
 
 42.8 MB output
 '''
+from __future__ import division
 import argparse
 import numpy as np
 import cPickle
@@ -44,6 +45,7 @@ parser.add_argument('--output')
 parser.add_argument('--subset', action='store_true')
 
 parser.add_argument('--lsh', action='store_true')
+parser.add_argument('-M', help='number of random vecs')
 parser.add_argument('--hashdata')
 parser.add_argument('--datavec')
 parser.add_argument('--haveDataVecs', action='store_true')
@@ -134,21 +136,28 @@ def lsh(M=3):
     # gaussian random
     randGauss = np.random.normal
 
+    f = open('min_max.pkl', 'rb')
+    minMaxs = cPickle.load(f)
+    f.close()
+    mins, maxs = minMaxs[0], minMaxs[1]
+
     hyperplanes = []
     for x in xrange(M):
         hyperPlane = np.zeros(NUM_DIMS)
         for i in xrange(NUM_DIMS):
-            hyperPlane[i] = randGauss()
+            mid = (mins[i] + maxs[i])/2 + 1.0
+            hyperPlane[i] = randGauss(loc=mid, scale=abs(maxs[i]-mid)+1.0)
         hyperplanes.append(hyperPlane)
 
     print "got M=%d hyperplanes" % M
-    print hyperplanes
+    #print hyperplanes
     print "\n=====================\n\n"
 
     if args.haveDataVecs:
         f = open(args.datavec, 'rb')
         userToDataVecs = cPickle.load(f)
         f.close()
+        print "loaded data vecs"
     else:
         f = open(args.data, 'rb')
         userData = cPickle.load(f)
@@ -174,8 +183,11 @@ def lsh(M=3):
         cPickle.dump(userToDataVecs, f)
         f.close()
 
+        print "finished making userDataVecs"
+
     userToHashed = {}
     hashSets = {}
+    hashToUsers = {}
     n = len(hyperplanes)
     for user in userToDataVecs:
         dataVec = userToDataVecs[user]
@@ -184,7 +196,7 @@ def lsh(M=3):
         for i in xrange(n):
             hPlane = hyperplanes[i]
             dotPdt = np.dot(hPlane, dataVec)
-            if dotPdt >= 0:
+            if dotPdt >= 0.0:
                 hash += '1'
             else:
                 hash += '0'
@@ -194,14 +206,21 @@ def lsh(M=3):
             hashSets[hash] += 1
         except:
             hashSets[hash] = 1
-
-    print "###############"
-    print hashSets
-    print "###############"
-
+        try:
+            hashToUsers[hash].append(user)
+        except:
+            hashToUsers[hash] = [user]
 
     f = open(args.hashdata, 'wb')
     cPickle.dump(hashSets, f)
+    f.close()
+
+    f = open("userToHashed_M%s.pkl" % args.M, 'wb')
+    cPickle.dump(userToHashed, f)
+    f.close()
+
+    f = open("hashToUsers_M%s.pkl" % args.M, 'wb')
+    cPickle.dump(hashToUsers, f)
     f.close()
 
     print "num hash sets", len(hashSets)
@@ -218,11 +237,11 @@ def getUserDataSubset():
     subset = {}
     i = 0
     for user in userData:
-        if i % 91993 == 0:
+        if i % 9193 == 0:
             subset[user] = userData[user]
         i += 1
 
-    f = open("subset.pkl", 'wb')
+    f = open("subset_norm.pkl", 'wb')
     cPickle.dump(subset, f)
     f.close()
         
@@ -294,7 +313,7 @@ def normalizeData():
     d_mins[19], d_maxs[19] = np.nanmin(d19), np.nanmax(d19)
 
     min_max = (d_mins, d_maxs)
-    f = open('min_max.pkl', 'wb')
+    f = open('min_max_2.pkl', 'wb')
     cPickle.dump(min_max, f)
     f.close()
 
@@ -315,7 +334,7 @@ def normalizeData():
                   data[3][8] / d_maxs[18], data[3][9] / d_maxs[19])]
         normalizedData[user] = nData
 
-    f = open('normalized_ALL.pkl', 'wb')
+    f = open('normalized_ALL_2.pkl', 'wb')
     cPickle.dump(normalizedData, f)
     f.close()
 
@@ -330,10 +349,10 @@ def main():
         getUserDataSubset()
 
     if args.lsh:
-        lsh()
+        lsh(int(args.M))
 
-    if args.normalize:
-        normalizeData()
+    #if args.normalize:
+    #    normalizeData()
 
     print "TIME:", time() - t
 
