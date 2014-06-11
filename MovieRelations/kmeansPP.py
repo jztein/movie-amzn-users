@@ -1,4 +1,16 @@
 '''
+len(clusters[i]):
+3474
+3477
+3480
+3467
+3472
+3468
+3475
+3478
+3469
+3470
+
 USAGE:
 # prelimClusters()
 $ python kmeansPP.py --utm /Users/kristen/Documents/1UCLA/CS199/pyCode/utm.pkl --mtu /Users/kristen/Documents/1UCLA/CS199/pyCode/mtu.pkl -g groupedC.pkl -k hashedC.pkl --prelim
@@ -327,6 +339,10 @@ def kmeans(centroids, data):
 
     f = open(args.s, 'wb')
     cPickle.dump(oldClusters, f)
+    f.close()
+
+    f = open("saveLaststdKmeansCentroids.pkl", 'wb')
+    cPickle.dump(centroids, f)
     f.close()
 
 def main():
